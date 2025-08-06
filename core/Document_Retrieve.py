@@ -253,13 +253,14 @@ class DocumentRetriever:
         result = [(filename, score, index) for score, filename, index in scored_docs[:top_k]]
 
         if show_details:
-            print(f"\n🎯 前{top_k}个最相关文档:")
-            for rank, (filename, score, index) in enumerate(result, 1):
-                print(f"{rank}. [{filename}] - 得分: {score:.6f}")
-                if rank == 1 and self.documents[index]:
-                    # 显示最相关文档的预览
-                    doc_preview = self.documents[index][:200].replace('\n', ' ').strip()
-                    print(f"   📝 内容预览: {doc_preview}...")
+            print("")
+            # print(f"\n🎯 前{top_k}个最相关文档:")
+            # for rank, (filename, score, index) in enumerate(result, 1):
+            #     print(f"{rank}. [{filename}] - 得分: {score:.6f}")
+            #     if rank == 1 and self.documents[index]:
+            #         # 显示最相关文档的预览
+            #         doc_preview = self.documents[index][:200].replace('\n', ' ').strip()
+            #         print(f"   📝 内容预览: {doc_preview}...")
 
         return result
 
@@ -317,6 +318,7 @@ DeepBI通过四层流量机制与策略组合，构建了系统化的新品爆�
     # 搜索相关文档
     results = retriever.search(query, top_k=13)
     # 获取最佳匹配
+
     best_match = retriever.get_best_match(query, show_details=False)
     if best_match:
         filename, content, score = best_match
