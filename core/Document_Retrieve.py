@@ -238,13 +238,14 @@ class DocumentRetriever:
             final_scores.append(final_score)
 
             if show_details:
-                print(f"[{filename}]:")
-                print(f"  BM25: 内容={bm25_content:.3f}, 标题={bm25_title:.3f}")
-                print(f"  完全匹配: 内容={exact_content}, 标题={exact_title}")
-                print(f"  问答模式: 内容={qa_content:.3f}, 标题={qa_title:.3f}")
-                print(f"  语义增强: 内容={semantic_content:.3f}, 标题={semantic_title:.3f}")
-                print(f"  最终得分: {final_score:.6f}")
-                print()
+                pass
+                # print(f"[{filename}]:")
+                # print(f"  BM25: 内容={bm25_content:.3f}, 标题={bm25_title:.3f}")
+                # print(f"  完全匹配: 内容={exact_content}, 标题={exact_title}")
+                # print(f"  问答模式: 内容={qa_content:.3f}, 标题={qa_title:.3f}")
+                # print(f"  语义增强: 内容={semantic_content:.3f}, 标题={semantic_title:.3f}")
+                # print(f"  最终得分: {final_score:.6f}")
+                # print()
 
         # 排序并返回结果
         scored_docs = [(final_scores[i], self.file_names[i], i) for i in range(len(self.file_names))]
@@ -254,13 +255,13 @@ class DocumentRetriever:
 
         if show_details:
             print("")
-            # print(f"\n🎯 前{top_k}个最相关文档:")
-            # for rank, (filename, score, index) in enumerate(result, 1):
-            #     print(f"{rank}. [{filename}] - 得分: {score:.6f}")
-            #     if rank == 1 and self.documents[index]:
-            #         # 显示最相关文档的预览
-            #         doc_preview = self.documents[index][:200].replace('\n', ' ').strip()
-            #         print(f"   📝 内容预览: {doc_preview}...")
+            print(f"\n🎯 前{top_k}个最相关文档:")
+            for rank, (filename, score, index) in enumerate(result, 1):
+                print(f"{rank}. [{filename}] - 得分: {score:.6f}")
+                if rank == 1 and self.documents[index]:
+                    # 显示最相关文档的预览
+                    doc_preview = self.documents[index][:200].replace('\n', ' ').strip()
+                    print(f"   📝 内容预览: {doc_preview}...")
 
         return result
 
@@ -297,26 +298,10 @@ if __name__ == "__main__":
     # 初始化检索器
     retriever = DocumentRetriever("..\config\strategies")
     # 示例查询
-    query = """# 新品推广如何通过亚马逊广告实现爆单：传统运营与DeepBI智能策略对比
-
-## 背景与挑战
-
-亚马逊新品推广面临流量获取难、ACOS偏高、预算分配不合理等核心痛点。传统运营方式依赖人工经验，难以系统化解决这些问题，导致新品推广周期长、爆单概率低。随着亚马逊广告竞争加剧，卖家亟需更智能的解决方案实现精准流量获取与高效转化。
-
-## 传统SP广告运营方法
-
-传统新品推广主要依赖人工选词与ASIN投放，存在明显局限性。在关键词投放方面，运营者通常手动选取大词或竞品词，缺乏动态优化机制，导致ACOS居高不下。ASIN投放则局限于少量头部竞品，流量池狭窄且竞争激烈。预算分配往往固定不变，无法根据实时表现调整，造成预算浪费或优质流量获取不足。整个推广过程缺乏系统化分层机制，难以实现流量质量的阶梯式提升。
-
-## DeepBI智能推广策略
-
-DeepBI通过四层流量机制与策略组合，构建了系统化的新品爆单解决方案。**四层流量机制**形成完整漏斗：探索层通过ASIN广告抢占竞品详情页和搜索结果页流量，实现初始数据积累；初筛层动态筛选潜力词与ASIN；精准层验证长期价值流量；放量层集中资源投放优质黑马词与ASIN。**核心策略组合**包括：自动加词策略挖掘真实搜索词构建动态词库，自动加ASIN策略扩展竞品流量池；提曝光与控曝光策略形成"探索-优化"闭环；成单关键词与重点词策略实现梯度化运营；基于库存的预算调整与动态修改预算策略保障投放持续性。DeepBI独特之处在于ASIN广告反哺关键词机制——通过竞品ASIN投放归因高转化关键词，解决新品期listing质量分低导致的关键词广告效果不佳问题。
-
-## 策略对比与总结
-
-相比传统方法，DeepBI展现出三大优势：在流量获取上，通过ASIN反哺关键词机制突破新品冷启动困境；在数据应用上，实现"采集-验证-放量"的螺旋上升式优化；在资源分配上，依托智能算法达成预算与流量的动态平衡。这种系统化策略组合使新品推广能够快速积累有效数据，精准识别高价值流量，最终实现爆单目标。对于亚马逊卖家而言，采用DeepBI智能系统可显著缩短新品推广周期，提高爆单成功率。
+    query = """在亚马逊广告运营中，曝光量的调控需要根据广告阶段和目标动态调整策略组合。对于初期探索阶段，DeepBI的提曝光策略通过智能竞价调整快速获取曝光，配合自动加词策略和自动加ASIN策略形成关键词和竞品ASIN的拓展闭环，这种双轨机制既能挖掘高潜力长尾词，又能通过竞品ASIN精准截流。当广告进入稳定期后，成单关键词与ASIN策略会对历史转化词进行激进提价，而重点词策略则对近期高转化词实施更大力度的溢价培养，形成阶梯式的价值挖掘体系。针对过度曝光导致的成本问题，控曝光策略通过动态降价将曝光拉回合理区间，而控ACOS策略则专门压制高花费低转化的劣质流量，二者协同实现成本精细管控。预算管理方面，修改预算策略根据ACOS表现动态调配预算资源，结合基于库存的预算调整策略防止断货风险，构成完整的预算防御体系。对于市场竞争激烈的大词，可通过自动加词策略持续获取用户真实搜索词，配合搜索词竞品ASIN策略拓展次级竞品库，实现流量来源的多元化布局。整个优化过程形成"探索-筛选-放大-控制"的闭环逻辑，各策略通过数据反馈机制相互联动，既保证流量获取效率，又维持健康的广告成本结构。
 """
     # 搜索相关文档
-    results = retriever.search(query, top_k=13)
+    results = retriever.search(query, top_k=46)
     # 获取最佳匹配
 
     best_match = retriever.get_best_match(query, show_details=False)

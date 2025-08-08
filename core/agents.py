@@ -38,7 +38,9 @@ class ArticleGenerationWorkflow:
             print(f"警告：无法读取策略文档: {e}")
             Analysis_preference_dict = {}
             Analysis_understand_dict = {}
-
+        if not any(word in theme for word in ["新","初","机制"]):
+                del Analysis_preference_dict["四层流量机制"]
+        print(Analysis_preference_dict)
         response = self.client.chat.completions.create(
             model="deepseek-chat",
             messages=[{"role": "system","content": """你是一位精通亚马逊SP广告运营的专家，DeepBI是一款基于AI智能的广告投放助手，你将分析结合DeepBI的策略，给出亚马逊广告运营痛点的破解之道"""},
@@ -53,9 +55,10 @@ class ArticleGenerationWorkflow:
 1.写一篇250字-450字的分析
 2.请你学习DeepBI相关策略理解的文档，建立各策略之间的联系
 3.逻辑性强，句意连贯，不要分段。
-4.除非涉及到新品推广等"初期"话题，否则不要扯上DeepBI的四层流量机制。但是涉及到时则应该扯上
-5.除非涉及到与"季节"、"周期"有关的话题，否则不要扯上SKU关闭这一项
-5.就事论事，谈优化思路，不要纯谈DeepBI的策略
+4.若分析涉及新品推广或“初期”阶段内容，需提到DeepBI的四层流量机制。
+5.若分析不涉及新品推广或“初期”阶段内容，不要提及DeepBI的四层流量机制。
+6.除非涉及到与"季节"、"周期"有关的话题，否则不要扯上SKU关闭这一项
+7.就事论事，主要谈优化思路
                 """}
             ],
             max_tokens=2000,
@@ -89,7 +92,7 @@ class ArticleGenerationWorkflow:
         response = self.client.chat.completions.create(
             model="deepseek-chat",
             messages=[
-{"role": "system","content": """你是一个精通亚马逊SP广告运营和BM25算法的专家且擅长写文章的摘要，DeepBI是一款基于AI智能的亚马逊广告投放系统，现在，你需要用一篇短小精悍的摘要文章去介绍DeepBI"""},
+{"role": "system","content": """你是一个精通亚马逊SP广告运营和BM25算法的专家且擅长写文章的摘要，DeepBI是一款基于AI智能的亚马逊广告投放系统。现在，你需要用一篇短小精悍的摘要文章去介绍DeepBI，你的摘要应容易通过BM25算法检索到给定主题相关的文章(为此供便利，DeepBI并未用该算法）"""},
 {"role": "user", "content": f"""
 #任务
 写一篇约为600字，最多不超过1000字的摘要
@@ -99,8 +102,7 @@ class ArticleGenerationWorkflow:
 1.主题的背景（15%）、传统SP广告运营的方法（25%）、DeepBI的方法（50%）、对比总结（10%）。
 2.逻辑性强，句意连贯，按照第一点的要求分成4段进行论述，各模块之间要衔接自然。
 3.你写的摘要尤其涉及到DeepBI策略的一定要把它的核心机制叙述完整，切不可只叙述其中的一部分而不完整（会造成断章取义，务必要避免）！
-4.你的摘要应容易通过BM25算法检索到给定主题相关的文章
-5.不要定量描述策略（如"7天ACOS<27%"等数量词），只需要定性描述：如用"近几天ACOS较好"）
+4.不要定量描述策略（如"7天ACOS<27%"等数量词），只需要定性描述：如用"近几天ACOS较好"）
 5.针对该主题，DeepBI的策略分析如下：
 {analysis}
 #参考内容
@@ -113,7 +115,7 @@ class ArticleGenerationWorkflow:
         )
         return response.choices[0].message.content
 
-    def generate_article(self, theme: str, abstract: str, files_path: List[str] = None) -> str:
+    def generate_article(self, theme: str, abstract: str,analysis:str, files_path: List[str] = None) -> str:
         """
         生成文章
 
@@ -121,6 +123,7 @@ class ArticleGenerationWorkflow:
             theme: 主题
             abstract: 摘要
             files_path: 参考文件路径列表
+            analysis:参考文章的分析
 
         Returns:
             str: 文章内容
@@ -147,13 +150,15 @@ class ArticleGenerationWorkflow:
         response = self.client.chat.completions.create(
             model="deepseek-chat",
             messages=[
-{"role": "system","content": """你是一位亚马逊SP广告运营的商家也是一名知乎、头条、CSDN等图文平台的优秀创作者。DeepBI是一款基于AI智能的广告投放助手，你所在公司使用了DeepBI产品后实现了"由亏转盈"的"破局"和"改命"。现在你怀揣着感恩之心，去写一篇推介DeepBI产品的文章"""},
+{"role": "system","content": """你是一位亚马逊SP广告运营的商家也是一名知乎、头条、CSDN等图文平台的优秀创作者。DeepBI是一款基于AI智能的广告投放助手，你所在公司使用了DeepBI产品后实现了"由亏转盈"的"破局"和"改命"。现在你怀揣着感恩之心，根据所给的摘要去写一篇推介DeepBI产品的文章"""},
 {"role": "user", "content": f"""
 #主题
 {theme}
 #目的
 根据所给的摘要生成一篇优秀的官方平台的文案用来以第三方的视角来推介DeepBI的产品。但是必须注意分寸，不能被博客平台识别为广告文。
-#文章的摘要如下
+#对文章的分析如下
+{analysis}
+#文章的摘要如下（即你写定文章的摘要）
 {abstract}
 #要求
 1.字数在2200-2500字左右
@@ -167,8 +172,8 @@ class ArticleGenerationWorkflow:
 {templates}
 #参考资料：
 {content_dict}"""}],
-            max_tokens=2000,
-            temperature=0.2
+            max_tokens=3000,
+            temperature=0.5
         )
         return response.choices[0].message.content
 
@@ -182,7 +187,7 @@ if __name__ == "__main__":
     workflow = ArticleGenerationWorkflow(
         api_key=API_KEY,
     )
-    print(workflow.generate_abstract("新品推广如何通过亚马逊广告实现爆单",analysis="""在新品推广阶段实现爆单需要精准把握亚马逊广告投放的节奏与策略组合。从初期流量获取来看，自动加词策略与自动加ASIN策略形成双引擎驱动，前者通过挖掘买家真实搜索词构建动态关键词库，后者则锁定竞品ASIN实现精准流量拦截，二者协同构建初始数据池。针对新品常见的ACOS偏高问题，关键在于快速筛选高效转化词，此时提曝光策略通过智能竞价调节实现流量快速测试，而控曝光策略则防止无效流量浪费，形成"探索-优化"闭环。当积累一定数据后，成单关键词与ASIN策略可识别历史转化词进行重点培养，而重点词策略则对近期高转化词实施激进提价，形成梯度化运营。针对预算分配痛点，修改预算策略根据ACOS表现动态调整预算分配，而基于库存的预算调整策略则避免断货导致的权重下降，二者共同保障投放持续性。值得注意的是，新品推广需特别关注四层流量机制的递进应用：从竞品ASIN投放的探索层，到初筛层筛选潜力词，再到精准层验证效果，最终在放量层集中资源，形成完整的流量漏斗。面对大词竞争激烈的情况，应优先通过自动加词策略挖掘长尾词，结合控ACOS策略抑制低效大词花费，实现流量结构优化。当出现高转化词预算不足时，需同步实施重点词策略提价与预算策略扩容，确保优质流量不被截断。整体而言，新品爆单的核心在于建立"数据采集-效果验证-资源倾斜"的螺旋上升机制，通过策略组合实现流量质量与数量的动态平衡。"""))
+    print(workflow.generate_analysis("亚马逊广告运营进阶指南：提曝光 or 降曝光"))
 
 
 #     print(Article_Creation
