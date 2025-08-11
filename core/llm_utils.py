@@ -4,7 +4,6 @@ from typing import List, Dict, Tuple, Optional
 import os
 from Document_Retrieve import DocumentRetriever
 from agents import ArticleGenerationWorkflow
-from Rag_Retrieve import RAGSystem,DocumentChunk
 
 class DocumentCreation:
     """智能文档生成系统"""
@@ -151,7 +150,7 @@ if __name__ == "__main__":
     # 配置参数
     API_KEY = "sk-2f4ea37debc1420d82379d20963cba30"
     KNOWLEDGE_BASE_PATH = "..\config\strategies"  # 知识库路径，如果不存在会自动跳过文档检索
-    THEME = "亚马逊广告运营进阶指南：如何利用AI赋能广告运营"
+    THEME = "亚马逊广告运营如何平衡ASIN投放和关键词投放"
 
     # 初始化工作流系统
     workflow = DocumentCreation(
