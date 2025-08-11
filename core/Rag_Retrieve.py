@@ -4,12 +4,20 @@ import warnings
 import tempfile
 import shutil
 from typing import List, Optional
+from langchain.schema import Document
+from typing import List, Dict, Tuple, Optional
+
 # 设置环境变量和警告过滤
 os.environ['USER_AGENT'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
 os.environ['TOKENIZERS_PARALLELISM'] = 'false'  # 避免tokenizers并行问题
 warnings.filterwarnings('ignore', category=DeprecationWarning)
 import os
+
 os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+import torch
+
+torch._C._jit_set_profiling_executor(False)
+torch._C._jit_set_profiling_mode(False)
 
 import bs4
 from langchain.chains import create_retrieval_chain
@@ -21,6 +29,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import ChatOpenAI
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+
 
 class SafeRAGSystem:
     def __init__(self, api_key: str, use_openai_embeddings: bool = False):
@@ -43,6 +52,7 @@ class SafeRAGSystem:
         self.rag_chain = None
         self.persist_directory = None
         self.use_openai_embeddings = use_openai_embeddings
+        self.model_path = "../model/sentence_transformer"
 
     def _get_embeddings(self):
         """获取嵌入模型"""
@@ -60,7 +70,7 @@ class SafeRAGSystem:
                 print("Using langchain_community.embeddings.HuggingFaceEmbeddings")
 
             return HuggingFaceEmbeddings(
-                model_name='sentence-transformers/all-MiniLM-L6-v2',
+                model_name=self.model_path,
                 model_kwargs={
                     'device': 'cpu',  # 强制使用CPU
                     'trust_remote_code': False
@@ -71,24 +81,66 @@ class SafeRAGSystem:
                 }
             )
 
-    def load_documents(self, url: str) -> List:
-        """加载并分割文档"""
-        try:
-            loader = WebBaseLoader(
-                web_paths=(url,),
-                bs_kwargs=dict(
-                    parse_only=bs4.SoupStrainer(
-                        class_=("post-content", "post-title", "post-header")
-                    )
-                ),
-            )
+    def get_relevant_segments(self, query: str, k: int = 3):
+        """
+        获取与查询最相关的文档片段
 
-            docs = loader.load()
-            print(f"Successfully loaded {len(docs)} documents")
+        Args:
+            query: 查询文本
+            k: 返回的片段数量
+
+        Returns:
+            list: 包含相关片段的列表，每个元素包含content和score
+        """
+        if not self.retriever:
+            return []
+
+        try:
+            # 使用向量存储进行相似度搜索
+            docs_with_scores = self.vectorstore.similarity_search_with_score(query, k=k)
+
+            # 格式化返回结果
+            relevant_segments = []
+            for doc, score in docs_with_scores:
+                segment = {
+                    'content': doc.page_content,
+                    'score': 1 - score,  # 转换为相似度分数，越高越相似
+                    'metadata': doc.metadata
+                }
+                relevant_segments.append(segment)
+
+            # 按相似度分数排序
+            relevant_segments.sort(key=lambda x: x['score'], reverse=True)
+
+            return relevant_segments
+
+        except Exception as e:
+            print(f"Error retrieving segments: {e}")
+            return []
+
+    def load_documents(self, folder_path: str) -> List:
+        """从文件夹加载并分割所有.md格式的文档"""
+        try:
+            # 获取所有.md文件的路径
+            md_files = [f for f in os.listdir(folder_path) if f.endswith('.md') or f.endswith('.txt')]
+            if not md_files:
+                print(f"No .md files found in {folder_path}")
+                return []
+
+            # 读取并加载文档内容
+            docs = []
+            for md_file in md_files:
+                file_path = os.path.join(folder_path, md_file)
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+
+                # 创建Document对象，添加文件名作为metadata
+                doc = Document(page_content=content, metadata={"file_name": md_file})
+                docs.append(doc)
 
             # 文档分割
             text_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=100,  # 减小块大小
+                chunk_size=1000,  # 减小块大小
                 chunk_overlap=100,
                 separators=["\n\n", "\n", " ", ""]
             )
@@ -114,7 +166,7 @@ class SafeRAGSystem:
             self.persist_directory = tempfile.mkdtemp()
 
             # 分批处理文档以避免内存问题
-            batch_size = 1
+            batch_size = 10
             all_texts = []
             all_metadatas = []
 
@@ -137,7 +189,7 @@ class SafeRAGSystem:
 
             self.retriever = self.vectorstore.as_retriever(
                 search_type="similarity",
-                search_kwargs={"k": 3}
+                search_kwargs={"k": 5}
             )
 
             print("Vector store created successfully")
@@ -170,6 +222,7 @@ class SafeRAGSystem:
             ])
 
             question_answer_chain = create_stuff_documents_chain(self.llm, prompt)
+            print(question_answer_chain)
             self.rag_chain = create_retrieval_chain(self.retriever, question_answer_chain)
 
             print("RAG chain created successfully!")
@@ -183,7 +236,6 @@ class SafeRAGSystem:
         """提问并获取答案"""
         if not self.rag_chain:
             return "RAG chain not initialized"
-
         try:
             response = self.rag_chain.invoke({"input": question})
             return response.get("answer", "No answer generated")
@@ -210,7 +262,7 @@ def main():
 
     try:
         # 加载文档
-        documents = rag.load_documents("https://lilianweng.github.io/posts/2023-06-23-agent/")
+        documents = rag.load_documents("../config/strategies")
 
         if not documents:
             print("Failed to load documents")
@@ -228,7 +280,7 @@ def main():
 
         # 测试问题
         test_questions = [
-            "What is an agent in the context of AI?",
+            "DeepBI是如何提曝光的",
         ]
 
         for question in test_questions:
@@ -236,6 +288,20 @@ def main():
             answer = rag.ask_question(question)
             print(f"A: {answer}")
             print("-" * 50)
+        for question in test_questions:
+            print(f"\nQ: {question}")
+
+            # 获取最相关的片段
+            segments = rag.get_relevant_segments(question, k=3)
+
+            if segments:
+                print(f"找到 {len(segments)} 个相关片段:")
+                for i, segment in enumerate(segments, 1):
+                    print(f"\n片段 {i} (相似度: {segment['score']:.3f}):")
+                    print(f"{segment['content'][:200]}...")  # 显示前200个字符
+                    print("-" * 50)
+            else:
+                print("未找到相关片段")
 
     except Exception as e:
         print(f"Fatal error: {e}")
