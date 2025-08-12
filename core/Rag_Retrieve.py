@@ -52,7 +52,7 @@ class SafeRAGSystem:
         self.rag_chain = None
         self.persist_directory = None
         self.use_openai_embeddings = use_openai_embeddings
-        self.model_path = "../model/sentence_transformer"
+        self.model_path = "..//model"
 
     def _get_embeddings(self):
         """获取嵌入模型"""
@@ -172,8 +172,6 @@ class SafeRAGSystem:
 
             for i in range(0, len(documents), batch_size):
                 batch = documents[i:i + batch_size]
-                print(f"Processing batch {i // batch_size + 1}/{(len(documents) - 1) // batch_size + 1}")
-
                 for doc in batch:
                     all_texts.append(doc.page_content)
                     all_metadatas.append(doc.metadata)
@@ -222,7 +220,6 @@ class SafeRAGSystem:
             ])
 
             question_answer_chain = create_stuff_documents_chain(self.llm, prompt)
-            print(question_answer_chain)
             self.rag_chain = create_retrieval_chain(self.retriever, question_answer_chain)
 
             print("RAG chain created successfully!")
@@ -262,7 +259,7 @@ def main():
 
     try:
         # 加载文档
-        documents = rag.load_documents("../config/strategies")
+        documents = rag.load_documents("..//config//strategies")
 
         if not documents:
             print("Failed to load documents")

@@ -2,7 +2,6 @@ from openai import OpenAI, api_key
 import pandas as pd
 from typing import List, Dict
 import os
-
 class ArticleGenerationWorkflow:
     """文章生成工作流系统"""
 
@@ -40,7 +39,6 @@ class ArticleGenerationWorkflow:
             Analysis_understand_dict = {}
         if not any(word in theme for word in ["新","初","机制"]):
                 del Analysis_preference_dict["四层流量机制"]
-        print(Analysis_preference_dict)
         response = self.client.chat.completions.create(
             model="deepseek-chat",
             messages=[{"role": "system","content": """你是一位精通亚马逊SP广告运营的专家，DeepBI是一款基于AI智能的广告投放助手，你将分析结合DeepBI的策略，给出亚马逊广告运营痛点的破解之道"""},
@@ -115,32 +113,60 @@ class ArticleGenerationWorkflow:
         )
         return response.choices[0].message.content
 
-    def generate_article(self, theme: str, abstract: str,analysis:str, files_path: List[str] = None) -> str:
+    def generate_article(self, theme: str, abstract: str,analysis:str, files_path: List[str] = None,files_path_rag:str=None,use_rag:bool=True) -> str:
         """
         生成文章
 
         Args:
             theme: 主题
             abstract: 摘要
-            files_path: 参考文件路径列表
+            files_path: 在不使用RAG的情况下，参考文件路径列表
             analysis:参考文章的分析
-
+            files_path_rag:在使用RAG的情况下，参考文件路径列表
+            use_rag:是否启用RAG检索
         Returns:
             str: 文章内容
         """
         content_dict = {}
-
-        if files_path:
-            for file_path in files_path:
-                try:
-                    full_path = f"../config/strategies/{file_path}"
-                    with open(full_path, "r", encoding="utf-8") as file:
-                        content_dict[file_path.strip(".md").strip(".txt")] = file.read()
-                except Exception as e:
-                    print(f"警告：无法读取文件 {file_path}: {e}")
-
-        # 读取模板
-        templates = ""
+        #可以选择两种检索方案：一种是基于RAG的片段检索，另外一种是基于分析的文档检索，并把全文给创作的Agent
+        if use_rag:
+            from Rag_Retrieve import SafeRAGSystem
+            rag = SafeRAGSystem(api_key=self.api_key, use_openai_embeddings=False)
+            try:
+                # 加载RAG检索文档
+                documents = rag.load_documents(files_path_rag)
+                if not documents:
+                    print("RAG检索路径错误，请检查".center(60, "*"))
+                    return ""
+                # 创建向量存储和RAG链
+                if not rag.create_vectorstore(documents):
+                    print("向量存储创建失败，请检查".center(60, "*"))
+                    return ""
+                if not rag.create_rag_chain():
+                    print("RAG链创建失败，请检查".center(60, "*"))
+                    return ""
+                # 测试问题
+                test_questions, segments_content = theme,[]
+                # 获取最相关的片段,参数k表示返回的排名最前即最相关片段的数量
+                segments = rag.get_relevant_segments(test_questions, k=5)
+                if segments:
+                    for i, segment in enumerate(segments, 1):
+                        content_dict[f"参考片段{i}"] = segment["content"]
+                else:
+                    print("未找到相关片段".center(60,"*"))
+            except Exception as e:
+                print(f"Fatal error: {e}")
+            finally:
+                rag.cleanup()
+        else:
+            if files_path:
+                for file_path in files_path:
+                    try:
+                        full_path = f"../config/strategies/{file_path}"
+                        with open(full_path, "r", encoding="utf-8") as file:
+                            content_dict[file_path.strip(".md").strip(".txt")] = file.read()
+                    except Exception as e:
+                        print(f"警告：无法读取文件 {file_path}: {e}")
         try:
             with open("../templates/Marketing_templates.md", "r", encoding="utf-8") as template:
                 templates = template.read()
