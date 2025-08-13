@@ -1,0 +1,28 @@
+[
+  {
+    "TouTiao": {
+      "account1": {
+        "username": "17701371379",
+        "encrypted_password": "Deepbi888",
+        "phone_last_four_digits": "1379"
+      },
+      "account2": {
+        "username": "",
+        "encrypted_password": "",
+        "phone_last_four_digits": ""
+      }
+    }
+  },
+  {
+    "JueJin": {
+      "account1": {
+      "aid":"2608",
+      "uuid":"7517253645361497619",
+      "username": "17701371379",
+      "encrypted_password": "Deepbi888",
+      "item_id": "810761795931514",
+      "phone_last_four_digits": "1379"}
+    }
+  }
+]
+
